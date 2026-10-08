@@ -42,3 +42,25 @@ app.include_router(orders.router)
 def health_check():
     """Health check endpoint to verify backend service availability."""
     return {"status": "ok"}
+
+
+# ============================================================================
+# TEMPORARY DEVELOPMENT / TEST SMTP DIAGNOSTIC ENDPOINTS
+# (Can be removed safely after testing SMTP connectivity on Render)
+# ============================================================================
+@app.get("/smtp-test", tags=["Diagnostics - Temporary"])
+@app.get("/api/smtp-test", tags=["Diagnostics - Temporary"])
+def smtp_diagnostic_test():
+    """
+    Temporary endpoint to diagnose SMTP connectivity directly from the server.
+    - Checks environment variables (without leaking SMTP_PASSWORD)
+    - Checks DNS resolution (IPv4 and IPv6)
+    - Probes raw TCP connectivity on ports 587 and 465
+    - Tests SMTP + STARTTLS handshake on port 587
+    - Tests SMTP_SSL handshake on port 465
+    - Tests SMTP authentication if credentials are provided
+    - Does NOT send any real email
+    """
+    from app.email_service import test_smtp_connectivity
+    return test_smtp_connectivity()
+

@@ -169,3 +169,147 @@ def send_order_summary_email(
         print(f"[EMAIL ERROR] Failed to send email to {recipient_email} for Order #{order_id}: {exc}")
         logger.error(f"Failed to send email to {recipient_email} for Order #{order_id}: {exc}")
         return False
+
+
+# ============================================================================
+# TEMPORARY DEVELOPMENT / TEST SMTP DIAGNOSTIC FUNCTION
+# (Can be removed along with the /smtp-test endpoint after diagnosis)
+# ============================================================================
+def test_smtp_connectivity() -> dict:
+    """
+    Diagnose SMTP connection without sending any email.
+    Tests TCP connection, STARTTLS on port 587, and SSL on port 465.
+    Never exposes SMTP_PASSWORD.
+    """
+    import socket
+    import ssl
+
+    host = (settings.SMTP_HOST or "").strip()
+    port = settings.SMTP_PORT or 587
+    user = (settings.SMTP_USER or "").strip()
+    password = (settings.SMTP_PASSWORD or "").replace(" ", "").strip()
+    from_addr = (settings.SMTP_FROM or "").strip() or user
+
+    env_status = {
+        "SMTP_HOST": host if host else "[NOT SET]",
+        "SMTP_PORT": port,
+        "SMTP_USER": user if user else "[NOT SET]",
+        "SMTP_PASSWORD_SET": bool(password),
+        "SMTP_PASSWORD_LENGTH": len(password) if password else 0,
+        "SMTP_FROM": from_addr if from_addr else "[NOT SET]"
+    }
+
+    if not host:
+        return {
+            "status": "error",
+            "message": "SMTP_HOST is not configured in environment variables.",
+            "environment_variables": env_status
+        }
+
+    # 1. DNS Resolution Check
+    dns_info = {"ipv4": [], "ipv6": [], "dns_error": None}
+    try:
+        addr_info = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+        for family, socktype, proto, canonname, sockaddr in addr_info:
+            ip = sockaddr[0]
+            if family == socket.AF_INET and ip not in dns_info["ipv4"]:
+                dns_info["ipv4"].append(ip)
+            elif family == socket.AF_INET6 and ip not in dns_info["ipv6"]:
+                dns_info["ipv6"].append(ip)
+    except Exception as e:
+        dns_info["dns_error"] = f"{type(e).__name__}: {str(e)}"
+
+    # 2. Raw TCP Connection Probe
+    raw_tcp_results = {}
+    for test_port in [587, 465, port]:
+        if test_port in raw_tcp_results:
+            continue
+        try:
+            sock = socket.create_connection((host, test_port), timeout=8)
+            sock.close()
+            raw_tcp_results[f"port_{test_port}"] = {
+                "reachable": True,
+                "exception_type": None,
+                "error_message": None
+            }
+        except Exception as e:
+            raw_tcp_results[f"port_{test_port}"] = {
+                "reachable": False,
+                "exception_type": type(e).__name__,
+                "error_message": str(e)
+            }
+
+    # 3. Port 587 Test (STARTTLS)
+    port_587_result = {
+        "port": 587,
+        "protocol": "SMTP + STARTTLS",
+        "connection_successful": False,
+        "starttls_successful": False,
+        "auth_attempted": bool(user and password),
+        "auth_successful": False,
+        "exception_type": None,
+        "error_message": None
+    }
+    try:
+        with smtplib.SMTP(host, 587, timeout=10) as server:
+            server.ehlo()
+            port_587_result["connection_successful"] = True
+            
+            ssl_ctx = ssl.create_default_context()
+            server.starttls(context=ssl_ctx)
+            server.ehlo()
+            port_587_result["starttls_successful"] = True
+            
+            if user and password:
+                server.login(user, password)
+                port_587_result["auth_successful"] = True
+    except Exception as e:
+        port_587_result["exception_type"] = type(e).__name__
+        port_587_result["error_message"] = str(e)
+
+    # 4. Port 465 Test (SMTP_SSL)
+    port_465_result = {
+        "port": 465,
+        "protocol": "SMTP_SSL",
+        "connection_successful": False,
+        "ssl_handshake_successful": False,
+        "auth_attempted": bool(user and password),
+        "auth_successful": False,
+        "exception_type": None,
+        "error_message": None
+    }
+    try:
+        ssl_ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(host, 465, timeout=10, context=ssl_ctx) as server:
+            port_465_result["connection_successful"] = True
+            server.ehlo()
+            port_465_result["ssl_handshake_successful"] = True
+            
+            if user and password:
+                server.login(user, password)
+                port_465_result["auth_successful"] = True
+    except Exception as e:
+        port_465_result["exception_type"] = type(e).__name__
+        port_465_result["error_message"] = str(e)
+
+    overall_success = (
+        port_587_result["auth_successful"] or 
+        port_465_result["auth_successful"] or
+        (port_587_result["starttls_successful"] and not password) or
+        (port_465_result["ssl_handshake_successful"] and not password)
+    )
+
+    return {
+        "status": "success" if overall_success else "failed",
+        "environment_variables": env_status,
+        "dns_resolution": dns_info,
+        "tcp_socket_probe": raw_tcp_results,
+        "port_587_starttls_test": port_587_result,
+        "port_465_ssl_test": port_465_result,
+        "summary": (
+            "SMTP connection and authentication succeeded!"
+            if overall_success
+            else "SMTP test failed. Check the port test errors and DNS resolution details."
+        )
+    }
+
