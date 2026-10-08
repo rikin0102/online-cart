@@ -41,7 +41,7 @@ def send_order_summary_email(
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"Order #{order_id} Confirmation - Online Cart"
+        msg["Subject"] = "Confirmation - Online Cart"
         msg["From"] = f"Online Cart <{smtp_from}>"
         msg["To"] = recipient_email
 
@@ -88,7 +88,7 @@ def send_order_summary_email(
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Order #{order_id} Confirmation - Online Cart</title>
+    <title>Confirmation - Online Cart</title>
     <style>
         body, table, td, p, a, li, blockquote {{
             -webkit-text-size-adjust: 100%;
