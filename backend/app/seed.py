@@ -12,61 +12,71 @@ INITIAL_PRODUCTS = [
         "name": "Wireless Mouse",
         "price": Decimal("499.00"),
         "category": "Accessories",
-        "description": "Ergonomic 2.4GHz wireless optical mouse with quiet click and high-precision tracking."
+        "description": "Ergonomic 2.4GHz wireless optical mouse with quiet click and high-precision tracking.",
+        "image_url": "/images/products/wireless-mouse.jpg"
     },
     {
         "name": "USB Keyboard",
         "price": Decimal("799.00"),
         "category": "Accessories",
-        "description": "Full-size spill-resistant USB wired keyboard with comfortable low-profile keys."
+        "description": "Full-size spill-resistant USB wired keyboard with comfortable low-profile keys.",
+        "image_url": "/images/products/usb-keyboard.jpg"
     },
     {
         "name": "Laptop Stand",
         "price": Decimal("1200.00"),
         "category": "Office",
-        "description": "Adjustable aluminum ergonomic laptop riser with heat-dissipation ventilation slots."
+        "description": "Adjustable aluminum ergonomic laptop riser with heat-dissipation ventilation slots.",
+        "image_url": "/images/products/laptop-stand.jpg"
     },
     {
         "name": "HD Webcam",
         "price": Decimal("1899.00"),
         "category": "Peripherals",
-        "description": "1080p Full HD video webcam with integrated noise-cancelling dual microphones."
+        "description": "1080p Full HD video webcam with integrated noise-cancelling dual microphones.",
+        "image_url": "/images/products/hd-webcam.jpg"
     },
     {
         "name": "Wireless Headphones",
         "price": Decimal("2499.00"),
         "category": "Audio",
-        "description": "Over-ear Bluetooth 5.2 headphones with active noise cancellation and 30-hour battery life."
+        "description": "Over-ear Bluetooth 5.2 headphones with active noise cancellation and 30-hour battery life.",
+        "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80"
     },
     {
         "name": "Power Bank",
         "price": Decimal("1299.00"),
         "category": "Power",
-        "description": "10000mAh slim fast-charging portable power bank with dual USB-A and USB-C output."
+        "description": "10000mAh slim fast-charging portable power bank with dual USB-A and USB-C output.",
+        "image_url": "https://images.unsplash.com/photo-1609592424364-db097960334a?auto=format&fit=crop&w=600&q=80"
     },
     {
         "name": "Phone Stand",
         "price": Decimal("299.00"),
         "category": "Accessories",
-        "description": "Compact foldable desktop phone and tablet stand with anti-slip silicone padding."
+        "description": "Compact foldable desktop phone and tablet stand with anti-slip silicone padding.",
+        "image_url": "/images/products/phone-stand.jpg"
     },
     {
         "name": "HDMI Cable",
         "price": Decimal("399.00"),
         "category": "Cables",
-        "description": "High-speed 4K 60Hz braided 2-meter HDMI 2.0 cable with gold-plated connectors."
+        "description": "High-speed 4K 60Hz braided 2-meter HDMI 2.0 cable with gold-plated connectors.",
+        "image_url": "/images/products/hdmi-cable.jpg"
     },
     {
         "name": "Mouse Pad",
         "price": Decimal("199.00"),
         "category": "Accessories",
-        "description": "Extended gaming mouse pad with stitched edges and non-slip textured rubber base."
+        "description": "Extended gaming mouse pad with stitched edges and non-slip textured rubber base.",
+        "image_url": "/images/products/mouse-pad.jpg"
     },
     {
         "name": "Desk Lamp",
         "price": Decimal("899.00"),
         "category": "Lighting",
-        "description": "Dimmable LED desk lamp with 3 color temperatures, touch control, and flexible gooseneck."
+        "description": "Dimmable LED desk lamp with 3 color temperatures, touch control, and flexible gooseneck.",
+        "image_url": "/images/products/desk-lamp.jpg"
     },
 ]
 
@@ -81,6 +91,7 @@ def seed_products(db: Session = None) -> None:
 
     try:
         created_count = 0
+        updated_count = 0
         for item in INITIAL_PRODUCTS:
             existing = db.query(Product).filter(Product.name == item["name"]).first()
             if not existing:
@@ -89,15 +100,20 @@ def seed_products(db: Session = None) -> None:
                     price=item["price"],
                     category=item["category"],
                     description=item["description"],
+                    image_url=item.get("image_url"),
                 )
                 db.add(product)
                 created_count += 1
+            else:
+                if item.get("image_url") and existing.image_url != item.get("image_url"):
+                    existing.image_url = item.get("image_url")
+                    updated_count += 1
 
         db.commit()
-        if created_count > 0:
-            logger.info(f"Successfully seeded {created_count} new products into the database.")
+        if created_count > 0 or updated_count > 0:
+            logger.info(f"Seed complete: {created_count} created, {updated_count} updated.")
         else:
-            logger.info("All seed products already exist in the database. No duplicates created.")
+            logger.info("All seed products up-to-date in database.")
     except Exception as e:
         db.rollback()
         logger.error(f"Error seeding database: {e}")

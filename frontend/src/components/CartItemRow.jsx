@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatPrice } from './ProductCard';
+import { getProductImage } from '../utils/productImages';
 
 const CartItemRow = ({
   item,
@@ -8,6 +9,8 @@ const CartItemRow = ({
   isOperating,
   isMobile = false,
 }) => {
+  const imageUrl = getProductImage(item);
+
   const handleDecrement = () => {
     if (item.quantity > 1) {
       onUpdateQuantity(item.product_id, item.quantity - 1);
@@ -26,10 +29,21 @@ const CartItemRow = ({
     return (
       <div className="cart-mobile-row" id={`mobile-cart-item-${item.product_id}`}>
         <div className="cart-mobile-header">
-          <div>
-            <div className="cart-product-name">{item.name}</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Unit: {formatPrice(item.price)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src={imageUrl}
+              alt={item.name}
+              className="cart-product-thumb"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=600&q=80';
+              }}
+            />
+            <div>
+              <div className="cart-product-name">{item.name}</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Unit: {formatPrice(item.price)}
+              </div>
             </div>
           </div>
           <button
@@ -80,13 +94,15 @@ const CartItemRow = ({
     <tr id={`cart-row-${item.product_id}`}>
       <td>
         <div className="cart-product-cell">
-          <div className="cart-product-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <line x1="8" y1="21" x2="16" y2="21" />
-              <line x1="12" y1="17" x2="12" y2="21" />
-            </svg>
-          </div>
+          <img
+            src={imageUrl}
+            alt={item.name}
+            className="cart-product-thumb"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=600&q=80';
+            }}
+          />
           <span className="cart-product-name">{item.name}</span>
         </div>
       </td>

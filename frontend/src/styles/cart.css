@@ -52,15 +52,17 @@
   gap: 12px;
 }
 
-.cart-product-icon {
-  width: 36px;
-  height: 36px;
-  background-color: var(--section-bg);
+.cart-product-icon,
+.cart-product-thumb {
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary);
+  object-fit: cover;
+  border: 1px solid var(--border-color);
+  background-color: var(--section-bg);
   flex-shrink: 0;
 }
 

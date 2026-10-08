@@ -56,6 +56,7 @@ class ProductResponse(BaseModel):
     description: str
     category: str
     price: Decimal
+    image_url: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -77,6 +78,7 @@ class CartItemResponse(BaseModel):
     price: Decimal
     quantity: int
     line_total: Decimal
+    image_url: str | None = None
 
 
 class CartResponse(BaseModel):
