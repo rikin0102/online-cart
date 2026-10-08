@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import client from '../api/client';
+import { getCurrentUser, loginUser, registerUser, fetchCart } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -20,15 +20,14 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const [meRes, cartRes] = await Promise.allSettled([
-        client.get('/auth/me'),
-        client.get('/cart'),
+      const [meData, cartData] = await Promise.allSettled([
+        getCurrentUser(),
+        fetchCart(),
       ]);
 
-      if (meRes.status === 'fulfilled') {
-        setUser(meRes.value.data);
+      if (meData.status === 'fulfilled') {
+        setUser(meData.value);
       } else {
-        // Token is invalid/expired
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
@@ -37,8 +36,8 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      if (cartRes.status === 'fulfilled') {
-        setCartCount(cartRes.value.data.item_count || 0);
+      if (cartData.status === 'fulfilled') {
+        setCartCount(cartData.value.item_count || 0);
       }
     } catch (err) {
       console.error('Error refreshing auth data:', err);
@@ -61,16 +60,16 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
-      const res = await client.get('/cart');
-      setCartCount(res.data.item_count || 0);
+      const data = await fetchCart();
+      setCartCount(data.item_count || 0);
     } catch (err) {
       console.error('Failed to fetch cart count:', err);
     }
   }, []);
 
   const login = async (email, password) => {
-    const res = await client.post('/auth/login', { email, password });
-    const { access_token, user: loggedUser } = res.data;
+    const data = await loginUser({ email, password });
+    const { access_token, user: loggedUser } = data;
     localStorage.setItem('token', access_token);
     setToken(access_token);
     setUser(loggedUser);
@@ -79,8 +78,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (name, email, password) => {
-    const res = await client.post('/auth/register', { name, email, password });
-    return res.data;
+    const data = await registerUser({ name, email, password });
+    return data;
   };
 
   const logout = () => {

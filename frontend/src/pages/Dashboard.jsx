@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import client from '../api/client';
+import {
+  fetchProducts,
+  fetchCart,
+  addItemToCart,
+  updateItemQuantity,
+  removeItemFromCart,
+} from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import ProductCard from '../components/ProductCard';
@@ -18,19 +24,19 @@ const Dashboard = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [productsRes, cartRes] = await Promise.all([
-        client.get('/products'),
-        client.get('/cart'),
+      const [productsData, cartData] = await Promise.all([
+        fetchProducts(),
+        fetchCart(),
       ]);
 
-      setProducts(productsRes.data);
+      setProducts(productsData);
 
       const itemsMap = {};
-      cartRes.data.items.forEach((item) => {
+      cartData.items.forEach((item) => {
         itemsMap[item.product_id] = item;
       });
       setCartItemsMap(itemsMap);
-      setCartCount(cartRes.data.item_count || 0);
+      setCartCount(cartData.item_count || 0);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       toastError('Could not load products. Please check your network connection.');
@@ -63,17 +69,14 @@ const Dashboard = () => {
   const handleAddToCart = async (productId) => {
     setOperatingProductId(productId);
     try {
-      const res = await client.post('/cart/items', {
-        product_id: productId,
-        quantity: 1,
-      });
+      const cartData = await addItemToCart(productId, 1);
 
       const updatedMap = {};
-      res.data.items.forEach((item) => {
+      cartData.items.forEach((item) => {
         updatedMap[item.product_id] = item;
       });
       setCartItemsMap(updatedMap);
-      setCartCount(res.data.item_count || 0);
+      setCartCount(cartData.item_count || 0);
       toastSuccess('Product added to cart.');
     } catch (err) {
       const detail = err.response?.data?.detail || 'Failed to add product to cart.';
@@ -86,16 +89,14 @@ const Dashboard = () => {
   const handleUpdateQuantity = async (productId, newQuantity) => {
     setOperatingProductId(productId);
     try {
-      const res = await client.patch(`/cart/items/${productId}`, {
-        quantity: newQuantity,
-      });
+      const cartData = await updateItemQuantity(productId, newQuantity);
 
       const updatedMap = {};
-      res.data.items.forEach((item) => {
+      cartData.items.forEach((item) => {
         updatedMap[item.product_id] = item;
       });
       setCartItemsMap(updatedMap);
-      setCartCount(res.data.item_count || 0);
+      setCartCount(cartData.item_count || 0);
       toastSuccess('Cart updated.');
     } catch (err) {
       const detail = err.response?.data?.detail || 'Failed to update quantity.';
@@ -108,14 +109,14 @@ const Dashboard = () => {
   const handleRemoveFromCart = async (productId) => {
     setOperatingProductId(productId);
     try {
-      const res = await client.delete(`/cart/items/${productId}`);
+      const cartData = await removeItemFromCart(productId);
 
       const updatedMap = {};
-      res.data.items.forEach((item) => {
+      cartData.items.forEach((item) => {
         updatedMap[item.product_id] = item;
       });
       setCartItemsMap(updatedMap);
-      setCartCount(res.data.item_count || 0);
+      setCartCount(cartData.item_count || 0);
       toastSuccess('Item removed from cart.');
     } catch (err) {
       const detail = err.response?.data?.detail || 'Failed to remove item from cart.';

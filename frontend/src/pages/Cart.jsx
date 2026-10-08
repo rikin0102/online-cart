@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import client from '../api/client';
+import {
+  fetchCart as apiFetchCart,
+  updateItemQuantity as apiUpdateItemQuantity,
+  removeItemFromCart as apiRemoveItemFromCart,
+  submitOrder as apiSubmitOrder,
+} from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import CartItemRow from '../components/CartItemRow';
@@ -17,12 +22,12 @@ const Cart = () => {
   const { toastSuccess, toastError, toastWarning } = useToast();
   const navigate = useNavigate();
 
-  const fetchCart = useCallback(async () => {
+  const loadCart = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await client.get('/cart');
-      setCart(res.data);
-      setCartCount(res.data.item_count || 0);
+      const data = await apiFetchCart();
+      setCart(data);
+      setCartCount(data.item_count || 0);
     } catch (err) {
       console.error('Failed to load cart:', err);
       toastError('Could not retrieve your cart. Please try again.');
@@ -32,17 +37,15 @@ const Cart = () => {
   }, [setCartCount, toastError]);
 
   useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
+    loadCart();
+  }, [loadCart]);
 
   const handleUpdateQuantity = async (productId, newQuantity) => {
     setOperatingProductId(productId);
     try {
-      const res = await client.patch(`/cart/items/${productId}`, {
-        quantity: newQuantity,
-      });
-      setCart(res.data);
-      setCartCount(res.data.item_count || 0);
+      const data = await apiUpdateItemQuantity(productId, newQuantity);
+      setCart(data);
+      setCartCount(data.item_count || 0);
       toastSuccess('Cart updated.');
     } catch (err) {
       const detail = err.response?.data?.detail || 'Failed to update quantity.';
@@ -55,9 +58,9 @@ const Cart = () => {
   const handleRemoveItem = async (productId) => {
     setOperatingProductId(productId);
     try {
-      const res = await client.delete(`/cart/items/${productId}`);
-      setCart(res.data);
-      setCartCount(res.data.item_count || 0);
+      const data = await apiRemoveItemFromCart(productId);
+      setCart(data);
+      setCartCount(data.item_count || 0);
       toastSuccess('Item removed from cart.');
     } catch (err) {
       const detail = err.response?.data?.detail || 'Failed to remove item.';
@@ -75,8 +78,7 @@ const Cart = () => {
 
     setIsSubmittingOrder(true);
     try {
-      const res = await client.post('/orders/submit');
-      const orderData = res.data;
+      const orderData = await apiSubmitOrder();
 
       setCartCount(0);
 
