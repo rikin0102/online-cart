@@ -63,63 +63,136 @@ def send_order_summary_email(
         lines.append("Thank you for shopping with Online Cart!")
         text_content = "\n".join(lines)
 
-        # Build HTML content
+        # Build HTML content with mobile-responsive design
         html_rows = ""
         for item in order_items:
             html_rows += f"""
             <tr>
-                <td style="padding: 10px 12px; border-bottom: 1px solid #E5E7EB; color: #1F2933;">{item.product_name}</td>
-                <td style="padding: 10px 12px; border-bottom: 1px solid #E5E7EB; text-align: center; color: #1F2933;">{item.quantity}</td>
-                <td style="padding: 10px 12px; border-bottom: 1px solid #E5E7EB; text-align: right; color: #1F2933;">{format_inr(item.price)}</td>
-                <td style="padding: 10px 12px; border-bottom: 1px solid #E5E7EB; text-align: right; font-weight: 600; color: #1F2933;">{format_inr(item.line_total)}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; color: #1F2933; word-break: break-word; font-size: 13px; vertical-align: top;">
+                    <strong>{item.product_name}</strong>
+                </td>
+                <td style="padding: 10px 6px; border-bottom: 1px solid #E5E7EB; text-align: center; color: #4B5563; font-size: 13px; vertical-align: top; white-space: nowrap;">
+                    {item.quantity}
+                </td>
+                <td style="padding: 10px 6px; border-bottom: 1px solid #E5E7EB; text-align: right; color: #4B5563; font-size: 13px; vertical-align: top; white-space: nowrap;">
+                    {format_inr(item.price)}
+                </td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #E5E7EB; text-align: right; font-weight: 600; color: #111827; font-size: 13px; vertical-align: top; white-space: nowrap;">
+                    {format_inr(item.line_total)}
+                </td>
             </tr>
             """
 
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Your order summary</title>
-        </head>
-        <body style="font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #F5F6F8; margin: 0; padding: 24px; color: #1F2933;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
-                <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 16px; margin-bottom: 20px;">
-                    <h2 style="margin: 0 0 8px 0; color: #1D4ED8; font-size: 20px;">Online Cart</h2>
-                    <p style="margin: 0; font-size: 14px; color: #6B7280;">Order Confirmation & Bill</p>
-                </div>
-                <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px 0;">
-                    Hi <strong>{recipient_name}</strong>, thanks for your order. Here is your bill:
-                </p>
-                <div style="background-color: #F5F6F8; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 13px; color: #6B7280;">
-                    Order Reference: <strong>#{order_id}</strong>
-                </div>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-                    <thead>
-                        <tr style="background-color: #F5F6F8;">
-                            <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #1F2933; border-bottom: 1px solid #E5E7EB;">Product</th>
-                            <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #1F2933; border-bottom: 1px solid #E5E7EB;">Qty</th>
-                            <th style="padding: 10px 12px; text-align: right; font-weight: 600; color: #1F2933; border-bottom: 1px solid #E5E7EB;">Price</th>
-                            <th style="padding: 10px 12px; text-align: right; font-weight: 600; color: #1F2933; border-bottom: 1px solid #E5E7EB;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {html_rows}
-                    </tbody>
-                    <tfoot>
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Order #{order_id} Confirmation - Online Cart</title>
+    <style>
+        body, table, td, p, a, li, blockquote {{
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }}
+        table, td {{
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }}
+        @media only screen and (max-width: 480px) {{
+            .email-container {{
+                padding: 16px 12px !important;
+                width: 100% !important;
+            }}
+            .email-body-pad {{
+                padding: 12px 6px !important;
+            }}
+            .table-head-th {{
+                font-size: 12px !important;
+                padding: 8px 4px !important;
+            }}
+            .table-cell-td {{
+                font-size: 12px !important;
+                padding: 8px 4px !important;
+            }}
+            .grand-total-label {{
+                font-size: 14px !important;
+            }}
+            .grand-total-val {{
+                font-size: 15px !important;
+            }}
+        }}
+    </style>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F3F4F6; margin: 0; padding: 16px 8px; color: #1F2933; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+        <tr>
+            <td align="center" style="padding: 0;">
+                <div class="email-container" style="max-width: 560px; width: 100%; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 24px; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); overflow: hidden;">
+                    
+                    <!-- Header -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-bottom: 2px solid #2563EB; padding-bottom: 14px; margin-bottom: 18px;">
                         <tr>
-                            <td colspan="3" style="padding: 14px 12px; text-align: right; font-weight: 600; font-size: 15px; color: #1F2933;">Grand total:</td>
-                            <td style="padding: 14px 12px; text-align: right; font-weight: 700; font-size: 16px; color: #1D4ED8;">{formatted_total}</td>
+                            <td>
+                                <h1 style="margin: 0 0 4px 0; color: #2563EB; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">Online Cart</h1>
+                                <p style="margin: 0; font-size: 13px; color: #6B7280; font-weight: 500;">Order Confirmation & Bill</p>
+                            </td>
                         </tr>
-                    </tfoot>
-                </table>
-                <p style="font-size: 13px; color: #6B7280; margin: 0; text-align: center; border-top: 1px solid #E5E7EB; padding-top: 16px;">
-                    Thank you for shopping with us!
-                </p>
-            </div>
-        </body>
-        </html>
-        """
+                    </table>
+
+                    <!-- Greeting & Order ID Badge -->
+                    <p style="font-size: 14px; line-height: 1.5; margin: 0 0 14px 0; color: #374151;">
+                        Hi <strong>{recipient_name}</strong>, thanks for your order! Here is your bill summary:
+                    </p>
+                    
+                    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: #475569;">
+                        Order Reference: <strong style="color: #0F172A; font-size: 14px;">#{order_id}</strong>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 18px;">
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; min-width: 280px;">
+                            <thead>
+                                <tr style="background-color: #F8FAFC; border-bottom: 2px solid #E2E8F0;">
+                                    <th class="table-head-th" style="padding: 10px 8px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 42%;">Product</th>
+                                    <th class="table-head-th" style="padding: 10px 6px; text-align: center; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 14%;">Qty</th>
+                                    <th class="table-head-th" style="padding: 10px 6px; text-align: right; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 22%;">Price</th>
+                                    <th class="table-head-th" style="padding: 10px 8px; text-align: right; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 22%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {html_rows}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" class="grand-total-label" style="padding: 14px 8px 10px 8px; text-align: right; font-weight: 600; font-size: 14px; color: #1E293B;">
+                                        Grand total:
+                                    </td>
+                                    <td class="grand-total-val" style="padding: 14px 8px 10px 8px; text-align: right; font-weight: 700; font-size: 16px; color: #2563EB; white-space: nowrap;">
+                                        {formatted_total}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="border-top: 1px solid #E5E7EB; padding-top: 14px; text-align: center;">
+                        <p style="font-size: 12px; color: #9CA3AF; margin: 0 0 4px 0;">
+                            Thank you for shopping with Online Cart!
+                        </p>
+                        <p style="font-size: 11px; color: #CBD5E1; margin: 0;">
+                            This is an automated bill receipt. Please keep it for your records.
+                        </p>
+                    </div>
+
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+"""
 
         part1 = MIMEText(text_content, "plain")
         part2 = MIMEText(html_content, "html")
