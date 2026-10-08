@@ -27,19 +27,13 @@ const Login = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
-      const msg = 'Please enter a valid email address (e.g. name@gmail.com).';
-      setErrorMsg(msg);
-      toastError(msg);
+    if (!normalizedEmail) {
+      setErrorMsg('Please enter your email address.');
       return;
     }
     if (!password) {
-      const msg = 'Please enter your password.';
-      setErrorMsg(msg);
-      toastError(msg);
+      setErrorMsg('Please enter your password.');
       return;
     }
 

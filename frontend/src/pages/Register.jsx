@@ -30,23 +30,47 @@ const Register = () => {
     const trimmedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
-    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
     if (!trimmedName) {
       setErrorMsg('Please enter your full name.');
-      toastError('Please enter your full name.');
       return;
     }
-    if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
-      const msg = 'Please enter a valid email address (e.g. name@gmail.com).';
-      setErrorMsg(msg);
-      toastError(msg);
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+      setErrorMsg('Please enter a valid email address (e.g. yourname@gmail.com).');
       return;
     }
+
+    // Common typo warnings
+    const domain = normalizedEmail.split('@')[1] || '';
+    const typoMap = {
+      'gmaill.com': 'gmail.com',
+      'gamil.com': 'gmail.com',
+      'gmal.com': 'gmail.com',
+      'gmai.com': 'gmail.com',
+      'gmaildotcom': 'gmail.com',
+      'yaho.com': 'yahoo.com',
+      'yahooo.com': 'yahoo.com',
+      'hotmial.com': 'hotmail.com',
+      'hotmai.com': 'hotmail.com',
+      'outlok.com': 'outlook.com',
+    };
+    if (typoMap[domain]) {
+      setErrorMsg(`Invalid email domain. Did you mean @${typoMap[domain]}? Please check your email.`);
+      return;
+    }
+
+    const blockedDomains = [
+      'fake.com', 'test.com', 'example.com', 'sample.com', 'tempmail.com',
+      'mailinator.com', '10minutemail.com', 'guerrillamail.com', 'trashmail.com'
+    ];
+    if (blockedDomains.includes(domain)) {
+      setErrorMsg('Temporary or disposable email addresses are not permitted. Please use a valid email.');
+      return;
+    }
+
     if (password.length < 8) {
-      const msg = 'Password must be at least 8 characters long.';
-      setErrorMsg(msg);
-      toastError(msg);
+      setErrorMsg('Password must be at least 8 characters long.');
       return;
     }
 
