@@ -16,9 +16,9 @@ GitHub : https://github.com/rikin0102/online-cart
 Email: rikinbtech@gmail.com
 Password: Rikin@123
 
-You can also create a new account from the application.
+You can also create a new account from the Website.
 
-## 🔄 Application Flow
+## 🔄 Website Flow
 
 The application works in the following way:
 
