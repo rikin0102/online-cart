@@ -128,46 +128,46 @@ The email is sent through **Brevo SMTP**.
 Online-Cart/
 │
 ├── backend/
-│ ├── alembic.ini # Alembic configuration
+│ ├── alembic.ini
 │ ├── alembic/
-│ │ ├── env.py # Alembic environment with dynamic DATABASE_URL mapping
+│ │ ├── env.py
 │ │ └── versions/
-│ │ ├── 0001_initial_schema.py # Baseline database tables
-│ │ └── 0002_add_image_url_to_products.py # Migration for product image URLs
+│ │ ├── 0001_initial_schema.py
+│ │ └── 0002_add_image_url_to_products.py
 │ │
 │ ├── app/
-│ │ ├── **init**.py # Package initialization
-│ │ ├── main.py # FastAPI application entry point, CORS & lifespan
-│ │ ├── config.py # Pydantic Settings & environment variable loader
-│ │ ├── database.py # SQLAlchemy engine, SessionLocal, and DB dependencies
-│ │ ├── models.py # SQLAlchemy models (User, Product, CartItem, Order, OrderItem)
-│ │ ├── schemas.py # Pydantic models for request/response validation
-│ │ ├── security.py # Password hashing and JWT token logic
-│ │ ├── deps.py # FastAPI authentication dependencies (get_current_user)
-│ │ ├── email_service.py # SMTP STARTTLS email sender with HTML template
-│ │ ├── seed.py # Idempotent catalog product seeder (10 items with images)
+│ │ ├── **init**.py
+│ │ ├── main.py
+│ │ ├── config.py
+│ │ ├── database.py
+│ │ ├── models.py
+│ │ ├── schemas.py
+│ │ ├── security.py
+│ │ ├── deps.py
+│ │ ├── email_service.py
+│ │ ├── seed.py
 │ │ │
 │ │ └── routers/
 │ │ ├── **init**.py
-│ │ ├── auth.py # /auth/register, /auth/login, /auth/me
-│ │ ├── products.py # /products
-│ │ ├── cart.py # /cart, /cart/items, /cart/items/{product_id}
-│ │ └── orders.py # /orders/submit
+│ │ ├── auth.py
+│ │ ├── products.py
+│ │ ├── cart.py
+│ │ └── orders.py
 │ │
-│ ├── requirements.txt # Python dependencies
-│ ├── .env.example # Backend environment template
-│ └── Procfile # Process file for Render / cloud deployment
+│ ├── requirements.txt
+│ ├── .env.example
+│ └── Procfile
 │
 ├── frontend/
-│ ├── index.html # Vite HTML entry point
-│ ├── package.json # Frontend dependencies & npm scripts
-│ ├── vite.config.js # Vite build configuration
-│ ├── .env.example # Frontend environment template
-│ ├── .gitignore # Frontend gitignore
+│ ├── index.html
+│ ├── package.json
+│ ├── vite.config.js
+│ ├── .env.example
+│ ├── .gitignore
 │ │
 │ ├── public/
 │ │ └── images/
-│ │ └── products/ # High-resolution product images
+│ │ └── products/
 │ │ ├── wireless-mouse.jpg
 │ │ ├── usb-keyboard.jpg
 │ │ ├── laptop-stand.jpg
@@ -178,46 +178,82 @@ Online-Cart/
 │ │ └── desk-lamp.jpg
 │ │
 │ └── src/
-│ ├── main.jsx # React entry point with providers
-│ ├── App.jsx # Route definitions and layout shell
+│ ├── main.jsx
+│ ├── App.jsx
 │ │
 │ ├── api/
-│ │ ├── client.js # Centralized Axios instance with auth interceptors
-│ │ ├── auth.js # Authentication API calls
-│ │ ├── products.js # Products API calls
-│ │ ├── cart.js # Cart & checkout API calls
-│ │ └── errorHandler.js # Standardized error extraction
+│ │ ├── client.js
+│ │ ├── auth.js
+│ │ ├── products.js
+│ │ ├── cart.js
+│ │ └── errorHandler.js
 │ │
 │ ├── context/
-│ │ └── AuthContext.jsx # Global authentication and cart state management
+│ │ └── AuthContext.jsx
 │ │
 │ ├── utils/
-│ │ └── productImages.js # Product image resolution and fallback helper
+│ │ └── productImages.js
 │ │
 │ ├── components/
-│ │ ├── Navbar.jsx # Global responsive navigation bar
-│ │ ├── ProductCard.jsx # Product catalog card with quantity stepper
-│ │ ├── CartItemRow.jsx # Table row (desktop) and stacked card (mobile)
-│ │ ├── Toast.jsx # Non-blocking notification toast provider
-│ │ └── ProtectedRoute.jsx # Route guard for authenticated pages
+│ │ ├── Navbar.jsx
+│ │ ├── ProductCard.jsx
+│ │ ├── CartItemRow.jsx
+│ │ ├── Toast.jsx
+│ │ └── ProtectedRoute.jsx
 │ │
 │ ├── pages/
-│ │ ├── Login.jsx # User login page
-│ │ ├── Register.jsx # User registration page
-│ │ ├── Dashboard.jsx # Product catalog dashboard with filters
-│ │ ├── Cart.jsx # Cart summary and checkout page
-│ │ └── OrderSuccess.jsx # Post-checkout receipt and status page
+│ │ ├── Login.jsx
+│ │ ├── Register.jsx
+│ │ ├── Dashboard.jsx
+│ │ ├── Cart.jsx
+│ │ └── OrderSuccess.jsx
 │ │
 │ └── styles/
-│ ├── global.css # Core design tokens, typography, and base elements
-│ ├── auth.css # Styling for login & registration cards
-│ ├── dashboard.css # 4/2/1 column product grid and category chips
-│ ├── cart.css # Cart tables, summary cards, and order success
-│ └── components.css # Navbar, ProductCard, Toast, and Stepper styles
+│ ├── global.css
+│ ├── auth.css
+│ ├── dashboard.css
+│ ├── cart.css
+│ └── components.css
 │
-├── vercel.json # Single-Page Application rewrite rules for Vercel
-├── README.md # Project documentation
-└── .gitignore # Root gitignore
+├── vercel.json
+├── README.md
+└── .gitignore
+
+````
+
+### Backend File Purpose
+
+| File / Folder | Purpose |
+|---|---|
+| `main.py` | FastAPI application entry point |
+| `config.py` | Environment and application settings |
+| `database.py` | PostgreSQL database connection |
+| `models.py` | SQLAlchemy database models |
+| `schemas.py` | Request and response validation |
+| `security.py` | Password hashing and JWT authentication |
+| `deps.py` | Authentication dependencies |
+| `email_service.py` | Order confirmation email service |
+| `seed.py` | Adds sample products to the database |
+| `routers/auth.py` | Registration, login and user authentication |
+| `routers/products.py` | Product APIs |
+| `routers/cart.py` | Cart management APIs |
+| `routers/orders.py` | Order submission API |
+| `alembic/` | Database migrations |
+
+### Frontend File Purpose
+
+| File / Folder | Purpose |
+|---|---|
+| `main.jsx` | React application entry point |
+| `App.jsx` | Application routes and layout |
+| `api/` | Backend API communication using Axios |
+| `AuthContext.jsx` | Global authentication state |
+| `components/` | Reusable UI components |
+| `pages/` | Application screens |
+| `styles/` | CSS files for application styling |
+| `public/images/` | Product images |
+| `ProtectedRoute.jsx` | Restricts pages to logged-in users |
+
 
 # API Endpoints
 
@@ -263,7 +299,7 @@ ALLOWED_ORIGINS=http://localhost:5173
 
 ```bash
 cd backend
-```
+````
 
 Create a virtual environment:
 
