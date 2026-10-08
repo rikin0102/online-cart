@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { extractErrorMessage } from '../api/errorHandler';
 import '../styles/auth.css';
 
 const Login = () => {
@@ -43,9 +44,9 @@ const Login = () => {
       const redirectPath = location.state?.from?.pathname || '/dashboard';
       navigate(redirectPath, { replace: true });
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Failed to login. Please check your credentials.';
-      setErrorMsg(detail);
-      toastError(detail);
+      const message = extractErrorMessage(err, 'Failed to login. Please check your credentials.');
+      setErrorMsg(message);
+      toastError(message);
     } finally {
       setIsSubmitting(false);
     }

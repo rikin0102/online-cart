@@ -34,9 +34,10 @@ client.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       const currentPath = window.location.pathname;
+      const url = error.config?.url || '';
       const isAuthEndpoint =
-        error.config.url.includes('/auth/login') ||
-        error.config.url.includes('/auth/register');
+        url.includes('/auth/login') ||
+        url.includes('/auth/register');
 
       if (!isAuthEndpoint) {
         localStorage.removeItem('token');

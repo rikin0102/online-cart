@@ -5,6 +5,7 @@ import {
   addItemToCart,
   updateItemQuantity,
   removeItemFromCart,
+  extractErrorMessage,
 } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -39,7 +40,7 @@ const Dashboard = () => {
       setCartCount(cartData.item_count || 0);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
-      toastError('Could not load products. Please check your network connection.');
+      toastError(extractErrorMessage(err, 'Could not load products. Please check your network connection.'));
     } finally {
       setLoading(false);
     }

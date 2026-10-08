@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { extractErrorMessage } from '../api/errorHandler';
 import '../styles/auth.css';
 
 const Register = () => {
@@ -12,7 +13,7 @@ const Register = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, login, user } = useAuth();
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, toastInfo } = useToast();
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -43,17 +44,26 @@ const Register = () => {
     }
 
     setIsSubmitting(true);
+    let registrationSucceeded = false;
     try {
       await register(trimmedName, normalizedEmail, password);
-      toastSuccess('Account created successfully! Logging you in...');
-      
-      // Auto login after registration
+      registrationSucceeded = true;
+      toastSuccess('Account created successfully!');
+    } catch (err) {
+      const message = extractErrorMessage(err, 'Failed to create account. Please try again.');
+      setErrorMsg(message);
+      toastError(message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Auto-login after successful account creation
+    try {
       await login(normalizedEmail, password);
       navigate('/dashboard', { replace: true });
-    } catch (err) {
-      const detail = err.response?.data?.detail || 'Failed to create account. Please try again.';
-      setErrorMsg(detail);
-      toastError(detail);
+    } catch (loginErr) {
+      toastInfo('Account created! Please log in with your credentials.');
+      navigate('/login', { replace: true });
     } finally {
       setIsSubmitting(false);
     }

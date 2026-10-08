@@ -5,6 +5,7 @@ import {
   updateItemQuantity as apiUpdateItemQuantity,
   removeItemFromCart as apiRemoveItemFromCart,
   submitOrder as apiSubmitOrder,
+  extractErrorMessage,
 } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -30,7 +31,7 @@ const Cart = () => {
       setCartCount(data.item_count || 0);
     } catch (err) {
       console.error('Failed to load cart:', err);
-      toastError('Could not retrieve your cart. Please try again.');
+      toastError(extractErrorMessage(err, 'Could not retrieve your cart. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -48,8 +49,8 @@ const Cart = () => {
       setCartCount(data.item_count || 0);
       toastSuccess('Cart updated.');
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Failed to update quantity.';
-      toastError(detail);
+      const message = extractErrorMessage(err, 'Failed to update quantity.');
+      toastError(message);
     } finally {
       setOperatingProductId(null);
     }
@@ -63,8 +64,8 @@ const Cart = () => {
       setCartCount(data.item_count || 0);
       toastSuccess('Item removed from cart.');
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Failed to remove item.';
-      toastError(detail);
+      const message = extractErrorMessage(err, 'Failed to remove item.');
+      toastError(message);
     } finally {
       setOperatingProductId(null);
     }
@@ -90,8 +91,8 @@ const Cart = () => {
 
       navigate('/order-success', { state: { order: orderData } });
     } catch (err) {
-      const detail = err.response?.data?.detail || 'Failed to submit order. Please try again.';
-      toastError(detail);
+      const message = extractErrorMessage(err, 'Failed to submit order. Please try again.');
+      toastError(message);
     } finally {
       setIsSubmittingOrder(false);
     }
