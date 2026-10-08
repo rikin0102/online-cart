@@ -79,3 +79,17 @@
   font-size: 14px;
   color: var(--text-muted);
 }
+
+@media (max-width: 640px) {
+  .auth-wrapper {
+    padding: 16px 12px;
+    align-items: flex-start;
+  }
+  .auth-card {
+    padding: 24px 16px;
+    border-radius: var(--radius-md);
+  }
+  .auth-title {
+    font-size: 20px;
+  }
+}
