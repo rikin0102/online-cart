@@ -1,7 +1,10 @@
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import List
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 
 # --- Auth Schemas ---
@@ -12,8 +15,11 @@ class UserRegister(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def normalize_email(cls, v: str) -> str:
-        return v.strip().lower()
+    def validate_email_format(cls, v: str) -> str:
+        cleaned = str(v).strip().lower()
+        if not EMAIL_REGEX.match(cleaned):
+            raise ValueError("Please enter a valid email address (e.g. name@gmail.com).")
+        return cleaned
 
     @field_validator("name")
     @classmethod
@@ -30,8 +36,11 @@ class UserLogin(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def normalize_email(cls, v: str) -> str:
-        return v.strip().lower()
+    def validate_email_format(cls, v: str) -> str:
+        cleaned = str(v).strip().lower()
+        if not EMAIL_REGEX.match(cleaned):
+            raise ValueError("Please enter a valid email address (e.g. name@gmail.com).")
+        return cleaned
 
 
 class UserResponse(BaseModel):

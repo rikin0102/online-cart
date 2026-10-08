@@ -30,16 +30,23 @@ const Register = () => {
     const trimmedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
     if (!trimmedName) {
       setErrorMsg('Please enter your full name.');
+      toastError('Please enter your full name.');
       return;
     }
-    if (!normalizedEmail || !normalizedEmail.includes('@')) {
-      setErrorMsg('Please enter a valid email address.');
+    if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+      const msg = 'Please enter a valid email address (e.g. name@gmail.com).';
+      setErrorMsg(msg);
+      toastError(msg);
       return;
     }
     if (password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long.');
+      const msg = 'Password must be at least 8 characters long.';
+      setErrorMsg(msg);
+      toastError(msg);
       return;
     }
 
