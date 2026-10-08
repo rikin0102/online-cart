@@ -125,135 +125,124 @@ The email is sent through **Brevo SMTP**.
 
 # 📁 Project Structure
 
+## Project Structure
+
+```text
 Online-Cart/
-│
 ├── backend/
-│ ├── alembic.ini
-│ ├── alembic/
-│ │ ├── env.py
-│ │ └── versions/
-│ │ ├── 0001_initial_schema.py
-│ │ └── 0002_add_image_url_to_products.py
-│ │
-│ ├── app/
-│ │ ├── **init**.py
-│ │ ├── main.py
-│ │ ├── config.py
-│ │ ├── database.py
-│ │ ├── models.py
-│ │ ├── schemas.py
-│ │ ├── security.py
-│ │ ├── deps.py
-│ │ ├── email_service.py
-│ │ ├── seed.py
-│ │ │
-│ │ └── routers/
-│ │ ├── **init**.py
-│ │ ├── auth.py
-│ │ ├── products.py
-│ │ ├── cart.py
-│ │ └── orders.py
-│ │
-│ ├── requirements.txt
-│ ├── .env.example
-│ └── Procfile
+│   ├── alembic.ini
+│   ├── alembic/
+│   │   ├── env.py
+│   │   └── versions/
+│   │       ├── 0001_initial_schema.py
+│   │       └── 0002_add_image_url_to_products.py
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   ├── models.py
+│   │   ├── schemas.py
+│   │   ├── security.py
+│   │   ├── deps.py
+│   │   ├── email_service.py
+│   │   ├── seed.py
+│   │   └── routers/
+│   │       ├── __init__.py
+│   │       ├── auth.py
+│   │       ├── products.py
+│   │       ├── cart.py
+│   │       └── orders.py
+│   ├── requirements.txt
+│   ├── .env.example
+│   └── Procfile
 │
 ├── frontend/
-│ ├── index.html
-│ ├── package.json
-│ ├── vite.config.js
-│ ├── .env.example
-│ ├── .gitignore
-│ │
-│ ├── public/
-│ │ └── images/
-│ │ └── products/
-│ │ ├── wireless-mouse.jpg
-│ │ ├── usb-keyboard.jpg
-│ │ ├── laptop-stand.jpg
-│ │ ├── hd-webcam.jpg
-│ │ ├── phone-stand.jpg
-│ │ ├── hdmi-cable.jpg
-│ │ ├── mouse-pad.jpg
-│ │ └── desk-lamp.jpg
-│ │
-│ └── src/
-│ ├── main.jsx
-│ ├── App.jsx
-│ │
-│ ├── api/
-│ │ ├── client.js
-│ │ ├── auth.js
-│ │ ├── products.js
-│ │ ├── cart.js
-│ │ └── errorHandler.js
-│ │
-│ ├── context/
-│ │ └── AuthContext.jsx
-│ │
-│ ├── utils/
-│ │ └── productImages.js
-│ │
-│ ├── components/
-│ │ ├── Navbar.jsx
-│ │ ├── ProductCard.jsx
-│ │ ├── CartItemRow.jsx
-│ │ ├── Toast.jsx
-│ │ └── ProtectedRoute.jsx
-│ │
-│ ├── pages/
-│ │ ├── Login.jsx
-│ │ ├── Register.jsx
-│ │ ├── Dashboard.jsx
-│ │ ├── Cart.jsx
-│ │ └── OrderSuccess.jsx
-│ │
-│ └── styles/
-│ ├── global.css
-│ ├── auth.css
-│ ├── dashboard.css
-│ ├── cart.css
-│ └── components.css
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── vercel.json
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── public/
+│   │   └── images/
+│   │       └── products/
+│   │           ├── wireless-mouse.jpg
+│   │           ├── usb-keyboard.jpg
+│   │           ├── laptop-stand.jpg
+│   │           ├── hd-webcam.jpg
+│   │           ├── phone-stand.jpg
+│   │           ├── hdmi-cable.jpg
+│   │           ├── mouse-pad.jpg
+│   │           └── desk-lamp.jpg
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── api/
+│       │   ├── client.js
+│       │   ├── auth.js
+│       │   ├── products.js
+│       │   ├── cart.js
+│       │   └── errorHandler.js
+│       ├── context/
+│       │   └── AuthContext.jsx
+│       ├── utils/
+│       │   └── productImages.js
+│       ├── components/
+│       │   ├── Navbar.jsx
+│       │   ├── ProductCard.jsx
+│       │   ├── CartItemRow.jsx
+│       │   ├── Toast.jsx
+│       │   └── ProtectedRoute.jsx
+│       ├── pages/
+│       │   ├── Login.jsx
+│       │   ├── Register.jsx
+│       │   ├── Dashboard.jsx
+│       │   ├── Cart.jsx
+│       │   └── OrderSuccess.jsx
+│       └── styles/
+│           ├── global.css
+│           ├── auth.css
+│           ├── dashboard.css
+│           ├── cart.css
+│           └── components.css
 │
-├── vercel.json
 ├── README.md
 └── .gitignore
-
-````
+```
 
 ### Backend File Purpose
 
-| File / Folder | Purpose |
-|---|---|
-| `main.py` | FastAPI application entry point |
-| `config.py` | Environment and application settings |
-| `database.py` | PostgreSQL database connection |
-| `models.py` | SQLAlchemy database models |
-| `schemas.py` | Request and response validation |
-| `security.py` | Password hashing and JWT authentication |
-| `deps.py` | Authentication dependencies |
-| `email_service.py` | Order confirmation email service |
-| `seed.py` | Adds sample products to the database |
-| `routers/auth.py` | Registration, login and user authentication |
-| `routers/products.py` | Product APIs |
-| `routers/cart.py` | Cart management APIs |
-| `routers/orders.py` | Order submission API |
-| `alembic/` | Database migrations |
+| File / Folder         | Purpose                                     |
+| --------------------- | ------------------------------------------- |
+| `main.py`             | FastAPI application entry point             |
+| `config.py`           | Environment and application settings        |
+| `database.py`         | PostgreSQL database connection              |
+| `models.py`           | SQLAlchemy database models                  |
+| `schemas.py`          | Request and response validation             |
+| `security.py`         | Password hashing and JWT authentication     |
+| `deps.py`             | Authentication dependencies                 |
+| `email_service.py`    | Order confirmation email service            |
+| `seed.py`             | Adds sample products to the database        |
+| `routers/auth.py`     | Registration, login and user authentication |
+| `routers/products.py` | Product APIs                                |
+| `routers/cart.py`     | Cart management APIs                        |
+| `routers/orders.py`   | Order submission API                        |
+| `alembic/`            | Database migrations                         |
 
 ### Frontend File Purpose
 
-| File / Folder | Purpose |
-|---|---|
-| `main.jsx` | React application entry point |
-| `App.jsx` | Application routes and layout |
-| `api/` | Backend API communication using Axios |
-| `AuthContext.jsx` | Global authentication state |
-| `components/` | Reusable UI components |
-| `pages/` | Application screens |
-| `styles/` | CSS files for application styling |
-| `public/images/` | Product images |
-| `ProtectedRoute.jsx` | Restricts pages to logged-in users |
-
+| File / Folder        | Purpose                               |
+| -------------------- | ------------------------------------- |
+| `main.jsx`           | React application entry point         |
+| `App.jsx`            | Application routes and layout         |
+| `api/`               | Backend API communication using Axios |
+| `AuthContext.jsx`    | Global authentication state           |
+| `components/`        | Reusable UI components                |
+| `pages/`             | Application screens                   |
+| `styles/`            | CSS files for application styling     |
+| `public/images/`     | Product images                        |
+| `ProtectedRoute.jsx` | Restricts pages to logged-in users    |
 
 # API Endpoints
 
@@ -299,7 +288,7 @@ ALLOWED_ORIGINS=http://localhost:5173
 
 ```bash
 cd backend
-````
+```
 
 Create a virtual environment:
 
