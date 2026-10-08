@@ -49,8 +49,7 @@ def send_order_summary_email(
 
         # Build plain-text fallback
         lines = [
-            f"Hi {recipient_name}, thanks for your order. Here is your bill:\n",
-            f"Order ID: #{order_id}\n",
+            f"Hi {recipient_name}, thanks for your order. Here is your bill summary:\n",
             f"{'Product':<30} | {'Qty':<5} | {'Price':<12} | {'Total':<12}",
             "-" * 65
         ]
@@ -140,14 +139,10 @@ def send_order_summary_email(
                         </tr>
                     </table>
 
-                    <!-- Greeting & Order ID Badge -->
-                    <p style="font-size: 14px; line-height: 1.5; margin: 0 0 14px 0; color: #374151;">
+                    <!-- Greeting -->
+                    <p style="font-size: 14px; line-height: 1.5; margin: 0 0 16px 0; color: #374151;">
                         Hi <strong>{recipient_name}</strong>, thanks for your order! Here is your bill summary:
                     </p>
-                    
-                    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: #475569;">
-                        Order Reference: <strong style="color: #0F172A; font-size: 14px;">#{order_id}</strong>
-                    </div>
 
                     <!-- Items Table -->
                     <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 18px;">
