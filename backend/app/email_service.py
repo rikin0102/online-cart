@@ -1,6 +1,4 @@
 import logging
-import socket
-import ssl
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -9,51 +7,6 @@ from typing import List, Any
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-
-def create_ipv4_socket(host: str, port: int, timeout: float = 10.0) -> socket.socket:
-    """
-    Explicitly resolve and connect using IPv4 (AF_INET) to prevent '[Errno 101] Network is unreachable'
-    errors on Linux/Docker cloud platforms (like Render) that lack outbound IPv6 routing.
-    Falls back to standard resolution if IPv4-specific lookup returns empty.
-    """
-    try:
-        addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-    except Exception:
-        addr_info = []
-
-    last_err = None
-    for res in addr_info:
-        af, socktype, proto, _, sa = res
-        sock = None
-        try:
-            sock = socket.socket(af, socktype, proto)
-            sock.settimeout(timeout)
-            sock.connect(sa)
-            return sock
-        except Exception as err:
-            last_err = err
-            if sock is not None:
-                sock.close()
-
-    # Fallback to standard socket connection if IPv4-specific attempt didn't connect
-    try:
-        return socket.create_connection((host, port), timeout=timeout)
-    except Exception as fallback_err:
-        raise last_err if last_err else fallback_err
-
-
-class IPv4SMTP(smtplib.SMTP):
-    """SMTP client that prioritizes IPv4 to avoid container IPv6 routing blackholes."""
-    def _get_socket(self, host, port, timeout):
-        return create_ipv4_socket(host, port, timeout)
-
-
-class IPv4SMTP_SSL(smtplib.SMTP_SSL):
-    """SMTP_SSL client that prioritizes IPv4 to avoid container IPv6 routing blackholes."""
-    def _get_socket(self, host, port, timeout):
-        new_socket = create_ipv4_socket(host, port, timeout)
-        return self.context.wrap_socket(new_socket, server_hostname=self._host)
 
 
 def format_inr(amount: Decimal) -> str:
@@ -69,21 +22,19 @@ def send_order_summary_email(
     grand_total: Decimal
 ) -> bool:
     """
-    Send an order summary email using pure SMTP.
-    Uses IPv4-resilient sockets and handles both Port 587 (STARTTLS) and Port 465 (SSL)
-    with automatic fallbacks.
-    Returns True if successful, False otherwise. Does NOT raise exceptions or block orders.
+    Send an order summary email using Brevo SMTP with STARTTLS on port 2525.
+    Returns True if successful, False otherwise. Does NOT raise exceptions or affect order creation.
     """
-    smtp_host = settings.SMTP_HOST.strip() if settings.SMTP_HOST else ""
-    smtp_port = int(settings.SMTP_PORT) if settings.SMTP_PORT else 587
-    smtp_user = settings.SMTP_USER.strip() if settings.SMTP_USER else ""
-    smtp_pass = settings.SMTP_PASSWORD.replace(" ", "").strip() if settings.SMTP_PASSWORD else ""
-    smtp_from = settings.SMTP_FROM.strip() if settings.SMTP_FROM else smtp_user
+    smtp_host = (settings.SMTP_HOST or "smtp-relay.brevo.com").strip()
+    smtp_port = int(settings.SMTP_PORT) if settings.SMTP_PORT else 2525
+    smtp_user = (settings.SMTP_USER or "").strip()
+    smtp_pass = (settings.SMTP_PASSWORD or "").replace(" ", "").strip()
+    smtp_from = (settings.SMTP_FROM or "").strip() or smtp_user
 
-    if not smtp_host or not smtp_user:
-        print(f"[EMAIL WARNING] SMTP not configured. Host: '{smtp_host}', User: '{smtp_user}'. Skipping email for Order #{order_id}")
+    if not smtp_host or not smtp_user or not smtp_pass:
+        print(f"[EMAIL WARNING] SMTP not fully configured. Host: '{smtp_host}', User: '{smtp_user}'. Skipping email for Order #{order_id}")
         logger.warning(
-            f"SMTP not configured (SMTP_HOST='{smtp_host}', SMTP_USER='{smtp_user}'). "
+            f"SMTP not fully configured (SMTP_HOST='{smtp_host}', SMTP_USER='{smtp_user}'). "
             f"Skipping email delivery for Order #{order_id}."
         )
         return False
@@ -175,73 +126,23 @@ def send_order_summary_email(
         msg.attach(part1)
         msg.attach(part2)
 
-        ssl_context = ssl.create_default_context()
-        sent = False
-        last_error = None
-
-        # Try configured port first, followed by alternate SMTP port (587 / 465)
-        ports_to_try = [smtp_port]
-        if smtp_port != 465:
-            ports_to_try.append(465)
-        if 587 not in ports_to_try:
-            ports_to_try.append(587)
-
-        for port in ports_to_try:
-            # 1. Attempt IPv4-optimized connection
+        # Standard SMTP connection with STARTTLS on port 2525
+        smtp = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+        try:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(smtp_user, smtp_pass)
+            smtp.sendmail(smtp_from, [recipient_email], msg.as_string())
+        finally:
             try:
-                if port == 465:
-                    with IPv4SMTP_SSL(smtp_host, 465, timeout=12, context=ssl_context) as server:
-                        server.ehlo()
-                        if smtp_pass:
-                            server.login(smtp_user, smtp_pass)
-                        server.sendmail(smtp_from, [recipient_email], msg.as_string())
-                        sent = True
-                        break
-                else:
-                    with IPv4SMTP(smtp_host, port, timeout=12) as server:
-                        server.ehlo()
-                        server.starttls(context=ssl_context)
-                        server.ehlo()
-                        if smtp_pass:
-                            server.login(smtp_user, smtp_pass)
-                        server.sendmail(smtp_from, [recipient_email], msg.as_string())
-                        sent = True
-                        break
-            except Exception as e_ipv4:
-                last_error = e_ipv4
-                print(f"[EMAIL ATTEMPT (IPv4) FAILED on {smtp_host}:{port}]: {type(e_ipv4).__name__}: {e_ipv4}")
+                smtp.quit()
+            except Exception:
+                pass
 
-            # 2. If IPv4 custom class failed, attempt standard smtplib connection
-            if not sent:
-                try:
-                    if port == 465:
-                        with smtplib.SMTP_SSL(smtp_host, 465, timeout=12, context=ssl_context) as server:
-                            server.ehlo()
-                            if smtp_pass:
-                                server.login(smtp_user, smtp_pass)
-                            server.sendmail(smtp_from, [recipient_email], msg.as_string())
-                            sent = True
-                            break
-                    else:
-                        with smtplib.SMTP(smtp_host, port, timeout=12) as server:
-                            server.ehlo()
-                            server.starttls(context=ssl_context)
-                            server.ehlo()
-                            if smtp_pass:
-                                server.login(smtp_user, smtp_pass)
-                            server.sendmail(smtp_from, [recipient_email], msg.as_string())
-                            sent = True
-                            break
-                except Exception as e_std:
-                    last_error = e_std
-                    print(f"[EMAIL ATTEMPT (Standard) FAILED on {smtp_host}:{port}]: {type(e_std).__name__}: {e_std}")
-
-        if sent:
-            print(f"[EMAIL SUCCESS] Order confirmation email sent successfully to {recipient_email} for Order #{order_id}")
-            logger.info(f"Order summary email sent successfully to {recipient_email} for Order #{order_id}")
-            return True
-        else:
-            raise last_error if last_error else Exception("Unknown SMTP failure")
+        print(f"[EMAIL SUCCESS] Order confirmation email sent successfully to {recipient_email} for Order #{order_id}")
+        logger.info(f"Order summary email sent successfully to {recipient_email} for Order #{order_id}")
+        return True
 
     except Exception as exc:
         print(f"[EMAIL ERROR] Failed to send email to {recipient_email} for Order #{order_id}: {type(exc).__name__}: {exc}")
@@ -255,12 +156,14 @@ def send_order_summary_email(
 # ============================================================================
 def test_smtp_connectivity() -> dict:
     """
-    Diagnose SMTP connection without sending any email.
-    Tests DNS resolution, raw TCP sockets, IPv4 STARTTLS on port 587, and SSL on port 465.
+    Diagnose Brevo SMTP connectivity on port 2525 without sending any email.
+    Tests raw TCP connection, STARTTLS handshake, and authentication.
     Never exposes SMTP_PASSWORD.
     """
-    host = (settings.SMTP_HOST or "").strip()
-    port = int(settings.SMTP_PORT) if settings.SMTP_PORT else 587
+    import socket
+
+    host = (settings.SMTP_HOST or "smtp-relay.brevo.com").strip()
+    port = int(settings.SMTP_PORT) if settings.SMTP_PORT else 2525
     user = (settings.SMTP_USER or "").strip()
     password = (settings.SMTP_PASSWORD or "").replace(" ", "").strip()
     from_addr = (settings.SMTP_FROM or "").strip() or user
@@ -282,42 +185,30 @@ def test_smtp_connectivity() -> dict:
         }
 
     # 1. DNS Resolution Check
-    dns_info = {"ipv4": [], "ipv6": [], "dns_error": None}
+    dns_info = {"ips": [], "dns_error": None}
     try:
         addr_info = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
-        for family, socktype, proto, canonname, sockaddr in addr_info:
+        for _, _, _, _, sockaddr in addr_info:
             ip = sockaddr[0]
-            if family == socket.AF_INET and ip not in dns_info["ipv4"]:
-                dns_info["ipv4"].append(ip)
-            elif family == socket.AF_INET6 and ip not in dns_info["ipv6"]:
-                dns_info["ipv6"].append(ip)
+            if ip not in dns_info["ips"]:
+                dns_info["ips"].append(ip)
     except Exception as e:
         dns_info["dns_error"] = f"{type(e).__name__}: {str(e)}"
 
-    # 2. Raw TCP Connection Probe (using IPv4 first)
-    raw_tcp_results = {}
-    for test_port in [587, 465, port]:
-        if test_port in raw_tcp_results:
-            continue
-        try:
-            sock = create_ipv4_socket(host, test_port, timeout=8)
-            sock.close()
-            raw_tcp_results[f"port_{test_port}"] = {
-                "reachable": True,
-                "exception_type": None,
-                "error_message": None
-            }
-        except Exception as e:
-            raw_tcp_results[f"port_{test_port}"] = {
-                "reachable": False,
-                "exception_type": type(e).__name__,
-                "error_message": str(e)
-            }
+    # 2. Raw TCP Probe on Port 2525
+    tcp_probe = {"reachable": False, "exception_type": None, "error_message": None}
+    try:
+        sock = socket.create_connection((host, port), timeout=10)
+        sock.close()
+        tcp_probe["reachable"] = True
+    except Exception as e:
+        tcp_probe["exception_type"] = type(e).__name__
+        tcp_probe["error_message"] = str(e)
 
-    # 3. Port 587 Test (SMTP + STARTTLS via IPv4)
-    port_587_result = {
-        "port": 587,
-        "protocol": "SMTP + STARTTLS (IPv4)",
+    # 3. SMTP + STARTTLS + Login Test
+    smtp_test = {
+        "port": port,
+        "protocol": "SMTP + STARTTLS",
         "connection_successful": False,
         "starttls_successful": False,
         "auth_attempted": bool(user and password),
@@ -325,67 +216,47 @@ def test_smtp_connectivity() -> dict:
         "exception_type": None,
         "error_message": None
     }
-    try:
-        with IPv4SMTP(host, 587, timeout=10) as server:
-            server.ehlo()
-            port_587_result["connection_successful"] = True
-            
-            ssl_ctx = ssl.create_default_context()
-            server.starttls(context=ssl_ctx)
-            server.ehlo()
-            port_587_result["starttls_successful"] = True
-            
-            if user and password:
-                server.login(user, password)
-                port_587_result["auth_successful"] = True
-    except Exception as e:
-        port_587_result["exception_type"] = type(e).__name__
-        port_587_result["error_message"] = str(e)
 
-    # 4. Port 465 Test (SMTP_SSL via IPv4)
-    port_465_result = {
-        "port": 465,
-        "protocol": "SMTP_SSL (IPv4)",
-        "connection_successful": False,
-        "ssl_handshake_successful": False,
-        "auth_attempted": bool(user and password),
-        "auth_successful": False,
-        "exception_type": None,
-        "error_message": None
-    }
+    smtp_obj = None
     try:
-        ssl_ctx = ssl.create_default_context()
-        with IPv4SMTP_SSL(host, 465, timeout=10, context=ssl_ctx) as server:
-            port_465_result["connection_successful"] = True
-            server.ehlo()
-            port_465_result["ssl_handshake_successful"] = True
-            
-            if user and password:
-                server.login(user, password)
-                port_465_result["auth_successful"] = True
+        smtp_obj = smtplib.SMTP(host, port, timeout=30)
+        smtp_obj.ehlo()
+        smtp_test["connection_successful"] = True
+
+        smtp_obj.starttls()
+        smtp_obj.ehlo()
+        smtp_test["starttls_successful"] = True
+
+        if user and password:
+            smtp_obj.login(user, password)
+            smtp_test["auth_successful"] = True
     except Exception as e:
-        port_465_result["exception_type"] = type(e).__name__
-        port_465_result["error_message"] = str(e)
+        smtp_test["exception_type"] = type(e).__name__
+        smtp_test["error_message"] = str(e)
+    finally:
+        if smtp_obj:
+            try:
+                smtp_obj.quit()
+            except Exception:
+                pass
 
     overall_success = (
-        port_587_result["auth_successful"] or 
-        port_465_result["auth_successful"] or
-        (port_587_result["starttls_successful"] and not password) or
-        (port_465_result["ssl_handshake_successful"] and not password)
+        smtp_test["auth_successful"] or
+        (smtp_test["starttls_successful"] and not password)
     )
 
     return {
         "status": "success" if overall_success else "failed",
         "environment_variables": env_status,
         "dns_resolution": dns_info,
-        "tcp_socket_probe": raw_tcp_results,
-        "port_587_starttls_test": port_587_result,
-        "port_465_ssl_test": port_465_result,
+        "tcp_probe": tcp_probe,
+        "smtp_test": smtp_test,
         "summary": (
-            "SMTP connection and authentication succeeded!"
+            f"Brevo SMTP connection and authentication succeeded on {host}:{port}!"
             if overall_success
-            else "SMTP test failed. Check the port test errors and DNS resolution details."
+            else f"Brevo SMTP test failed on {host}:{port}. Check error details above."
         )
     }
+
 
 
