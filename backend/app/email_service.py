@@ -23,20 +23,30 @@ def send_order_summary_email(
     grand_total: Decimal
 ) -> bool:
     """
-    Send an order summary email using smtplib with STARTTLS.
+    Send an order summary email using standard SMTP.
+    Uses STARTTLS for port 2525 / 587 and SMTP_SSL for port 465.
     Returns True if successful, False otherwise. Does NOT raise exceptions.
     """
-    smtp_host = settings.SMTP_HOST.strip() if settings.SMTP_HOST else ""
-    smtp_user = settings.SMTP_USER.strip() if settings.SMTP_USER else ""
-    smtp_pass = settings.SMTP_PASSWORD.replace(" ", "").strip() if settings.SMTP_PASSWORD else ""
-    smtp_from = settings.SMTP_FROM.strip() if settings.SMTP_FROM else smtp_user
+    import os
+    import ssl
 
-    if not smtp_host or not smtp_user:
-        print(f"[EMAIL WARNING] SMTP not configured. Host: '{smtp_host}', User: '{smtp_user}'. Skipping email for Order #{order_id}")
-        logger.warning(
-            f"SMTP not configured (SMTP_HOST='{smtp_host}', SMTP_USER='{smtp_user}'). "
-            f"Skipping email delivery for Order #{order_id}."
-        )
+    # Read configuration from settings and environment variables
+    smtp_host = (settings.SMTP_HOST or os.getenv("SMTP_HOST", "")).strip()
+    
+    # Parse SMTP_PORT safely to int
+    raw_port = settings.SMTP_PORT or os.getenv("SMTP_PORT", 2525)
+    try:
+        smtp_port = int(raw_port)
+    except (ValueError, TypeError):
+        smtp_port = 2525
+
+    smtp_user = (settings.SMTP_USER or os.getenv("SMTP_USER", "")).strip()
+    smtp_pass = (settings.SMTP_PASSWORD or os.getenv("SMTP_PASSWORD", "")).replace(" ", "").strip()
+    smtp_from = (settings.SMTP_FROM or os.getenv("SMTP_FROM", "")).strip() or smtp_user
+
+    if not smtp_host:
+        print(f"[EMAIL WARNING] SMTP_HOST not configured. Skipping email delivery for Order #{order_id}")
+        logger.warning(f"SMTP_HOST not configured. Skipping email delivery for Order #{order_id}.")
         return False
 
     try:
@@ -126,48 +136,51 @@ def send_order_summary_email(
         msg.attach(part1)
         msg.attach(part2)
 
-        import ssl
-
         ssl_context = ssl.create_default_context()
-        sent = False
-        last_error = None
 
-        # Try designated port first, then fallback to 465 SSL if 587 is blocked by ISP/firewall
-        ports_to_try = [settings.SMTP_PORT]
-        if settings.SMTP_PORT != 465:
-            ports_to_try.append(465)
-
-        for port in ports_to_try:
-            try:
-                if port == 465:
-                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=10, context=ssl_context) as server:
-                        if smtp_pass:
-                            server.login(smtp_user, smtp_pass)
-                        server.sendmail(smtp_from, [recipient_email], msg.as_string())
-                        sent = True
-                        break
-                else:
-                    with smtplib.SMTP(smtp_host, port, timeout=10) as server:
-                        server.starttls(context=ssl_context)
-                        if smtp_pass:
-                            server.login(smtp_user, smtp_pass)
-                        server.sendmail(smtp_from, [recipient_email], msg.as_string())
-                        sent = True
-                        break
-            except Exception as e:
-                last_error = e
-                print(f"[EMAIL ATTEMPT FAILED on port {port}]: {e}")
-
-        if sent:
-            print(f"[EMAIL SUCCESS] Order confirmation email sent to {recipient_email} for Order #{order_id}")
-            logger.info(f"Order summary email sent successfully to {recipient_email} for Order #{order_id}")
-            return True
+        # Connect using the configured SMTP host and port
+        if smtp_port == 465:
+            logger.info(f"Connecting to SMTP server {smtp_host}:{smtp_port} with SSL...")
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15, context=ssl_context) as server:
+                server.ehlo()
+                if smtp_user and smtp_pass:
+                    logger.info(f"Authenticating with SMTP user '{smtp_user}'...")
+                    server.login(smtp_user, smtp_pass)
+                logger.info(f"Sending email for Order #{order_id} to {recipient_email}...")
+                server.sendmail(smtp_from, [recipient_email], msg.as_string())
         else:
-            raise last_error if last_error else Exception("Unknown SMTP error")
+            # Port 2525, 587, or custom relay port: smtplib.SMTP + STARTTLS
+            logger.info(f"Connecting to SMTP server {smtp_host}:{smtp_port}...")
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                server.ehlo()
+                logger.info("Initiating STARTTLS encryption...")
+                server.starttls(context=ssl_context)
+                server.ehlo()
+                if smtp_user and smtp_pass:
+                    logger.info(f"Authenticating with SMTP user '{smtp_user}'...")
+                    server.login(smtp_user, smtp_pass)
+                logger.info(f"Sending email for Order #{order_id} to {recipient_email}...")
+                server.sendmail(smtp_from, [recipient_email], msg.as_string())
 
+        print(f"[EMAIL SUCCESS] Order confirmation email sent to {recipient_email} for Order #{order_id} via {smtp_host}:{smtp_port}")
+        logger.info(f"Order summary email sent successfully to {recipient_email} for Order #{order_id}")
+        return True
+
+    except smtplib.SMTPAuthenticationError as auth_err:
+        print(f"[EMAIL AUTH ERROR] SMTP authentication failed for user '{smtp_user}' on {smtp_host}:{smtp_port}: {auth_err}")
+        logger.error(f"SMTP authentication failed for user '{smtp_user}' on {smtp_host}:{smtp_port}: {auth_err}")
+        return False
+    except smtplib.SMTPConnectError as conn_err:
+        print(f"[EMAIL CONNECT ERROR] Could not connect to SMTP server {smtp_host}:{smtp_port}: {conn_err}")
+        logger.error(f"Could not connect to SMTP server {smtp_host}:{smtp_port}: {conn_err}")
+        return False
+    except smtplib.SMTPException as smtp_err:
+        print(f"[EMAIL PROTOCOL ERROR] SMTP error ({type(smtp_err).__name__}) on {smtp_host}:{smtp_port}: {smtp_err}")
+        logger.error(f"SMTP error ({type(smtp_err).__name__}) on {smtp_host}:{smtp_port}: {smtp_err}")
+        return False
     except Exception as exc:
-        print(f"[EMAIL ERROR] Failed to send email to {recipient_email} for Order #{order_id}: {exc}")
-        logger.error(f"Failed to send email to {recipient_email} for Order #{order_id}: {exc}")
+        print(f"[EMAIL ERROR] Failed to send email to {recipient_email} for Order #{order_id} ({type(exc).__name__}): {exc}")
+        logger.error(f"Failed to send email to {recipient_email} for Order #{order_id} ({type(exc).__name__}): {exc}")
         return False
 
 
@@ -178,17 +191,24 @@ def send_order_summary_email(
 def test_smtp_connectivity() -> dict:
     """
     Diagnose SMTP connection without sending any email.
-    Tests TCP connection, STARTTLS on port 587, and SSL on port 465.
-    Never exposes SMTP_PASSWORD.
+    Tests DNS, TCP connection, STARTTLS on configured port (e.g. 2525 / 587), and SSL on 465.
+    Never exposes SMTP_PASSWORD or secret keys.
     """
+    import os
     import socket
     import ssl
 
-    host = (settings.SMTP_HOST or "").strip()
-    port = settings.SMTP_PORT or 587
-    user = (settings.SMTP_USER or "").strip()
-    password = (settings.SMTP_PASSWORD or "").replace(" ", "").strip()
-    from_addr = (settings.SMTP_FROM or "").strip() or user
+    host = (settings.SMTP_HOST or os.getenv("SMTP_HOST", "")).strip()
+    
+    raw_port = settings.SMTP_PORT or os.getenv("SMTP_PORT", 2525)
+    try:
+        port = int(raw_port)
+    except (ValueError, TypeError):
+        port = 2525
+
+    user = (settings.SMTP_USER or os.getenv("SMTP_USER", "")).strip()
+    password = (settings.SMTP_PASSWORD or os.getenv("SMTP_PASSWORD", "")).replace(" ", "").strip()
+    from_addr = (settings.SMTP_FROM or os.getenv("SMTP_FROM", "")).strip() or user
 
     env_status = {
         "SMTP_HOST": host if host else "[NOT SET]",
@@ -221,9 +241,8 @@ def test_smtp_connectivity() -> dict:
 
     # 2. Raw TCP Connection Probe
     raw_tcp_results = {}
-    for test_port in [587, 465, port]:
-        if test_port in raw_tcp_results:
-            continue
+    test_ports = list(dict.fromkeys([port, 2525, 587, 465]))
+    for test_port in test_ports:
         try:
             sock = socket.create_connection((host, test_port), timeout=8)
             sock.close()
@@ -239,40 +258,12 @@ def test_smtp_connectivity() -> dict:
                 "error_message": str(e)
             }
 
-    # 3. Port 587 Test (STARTTLS)
-    port_587_result = {
-        "port": 587,
-        "protocol": "SMTP + STARTTLS",
+    # 3. Test Configured Port (e.g. 2525 with STARTTLS)
+    configured_port_result = {
+        "port": port,
+        "protocol": "SMTP_SSL" if port == 465 else "SMTP + STARTTLS",
         "connection_successful": False,
-        "starttls_successful": False,
-        "auth_attempted": bool(user and password),
-        "auth_successful": False,
-        "exception_type": None,
-        "error_message": None
-    }
-    try:
-        with smtplib.SMTP(host, 587, timeout=10) as server:
-            server.ehlo()
-            port_587_result["connection_successful"] = True
-            
-            ssl_ctx = ssl.create_default_context()
-            server.starttls(context=ssl_ctx)
-            server.ehlo()
-            port_587_result["starttls_successful"] = True
-            
-            if user and password:
-                server.login(user, password)
-                port_587_result["auth_successful"] = True
-    except Exception as e:
-        port_587_result["exception_type"] = type(e).__name__
-        port_587_result["error_message"] = str(e)
-
-    # 4. Port 465 Test (SMTP_SSL)
-    port_465_result = {
-        "port": 465,
-        "protocol": "SMTP_SSL",
-        "connection_successful": False,
-        "ssl_handshake_successful": False,
+        "tls_or_ssl_handshake_successful": False,
         "auth_attempted": bool(user and password),
         "auth_successful": False,
         "exception_type": None,
@@ -280,23 +271,31 @@ def test_smtp_connectivity() -> dict:
     }
     try:
         ssl_ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(host, 465, timeout=10, context=ssl_ctx) as server:
-            port_465_result["connection_successful"] = True
-            server.ehlo()
-            port_465_result["ssl_handshake_successful"] = True
-            
-            if user and password:
-                server.login(user, password)
-                port_465_result["auth_successful"] = True
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=10, context=ssl_ctx) as server:
+                configured_port_result["connection_successful"] = True
+                server.ehlo()
+                configured_port_result["tls_or_ssl_handshake_successful"] = True
+                if user and password:
+                    server.login(user, password)
+                    configured_port_result["auth_successful"] = True
+        else:
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.ehlo()
+                configured_port_result["connection_successful"] = True
+                server.starttls(context=ssl_ctx)
+                server.ehlo()
+                configured_port_result["tls_or_ssl_handshake_successful"] = True
+                if user and password:
+                    server.login(user, password)
+                    configured_port_result["auth_successful"] = True
     except Exception as e:
-        port_465_result["exception_type"] = type(e).__name__
-        port_465_result["error_message"] = str(e)
+        configured_port_result["exception_type"] = type(e).__name__
+        configured_port_result["error_message"] = str(e)
 
     overall_success = (
-        port_587_result["auth_successful"] or 
-        port_465_result["auth_successful"] or
-        (port_587_result["starttls_successful"] and not password) or
-        (port_465_result["ssl_handshake_successful"] and not password)
+        configured_port_result["auth_successful"] or
+        (configured_port_result["tls_or_ssl_handshake_successful"] and not password)
     )
 
     return {
@@ -304,12 +303,12 @@ def test_smtp_connectivity() -> dict:
         "environment_variables": env_status,
         "dns_resolution": dns_info,
         "tcp_socket_probe": raw_tcp_results,
-        "port_587_starttls_test": port_587_result,
-        "port_465_ssl_test": port_465_result,
+        "configured_port_test": configured_port_result,
         "summary": (
-            "SMTP connection and authentication succeeded!"
+            f"SMTP connection and authentication succeeded on {host}:{port}!"
             if overall_success
-            else "SMTP test failed. Check the port test errors and DNS resolution details."
+            else f"SMTP test failed on {host}:{port}. Review error_message and tcp_socket_probe details."
         )
     }
+
 
