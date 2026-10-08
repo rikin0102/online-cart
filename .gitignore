@@ -13,8 +13,7 @@ env/
 venv/
 .venv/
 myenv/
-**/myenv/
-**/node_modules/
+backend/myenv/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
