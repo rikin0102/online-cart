@@ -94,7 +94,7 @@ const Dashboard = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [products.length, setCartCount, toastError, toastInfo, toastSuccess]);
+  }, [setCartCount, toastError, toastInfo, toastSuccess]);
 
   useEffect(() => {
     loadData();

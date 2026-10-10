@@ -16,6 +16,10 @@ import '../styles/cart.css';
 const CACHE_CART_KEY = 'online_cart_cached_data';
 
 const Cart = () => {
+  const { cartCount, setCartCount } = useAuth();
+  const { toastSuccess, toastError, toastWarning } = useToast();
+  const navigate = useNavigate();
+
   // 1. Instant hydration from cache for 0ms initial render
   const [cart, setCart] = useState(() => {
     try {
@@ -26,12 +30,14 @@ const Cart = () => {
     }
   });
 
+  // Never block screen with spinner if cart is already known to be empty or cached!
   const [loading, setLoading] = useState(() => {
+    if (cartCount === 0) return false;
     try {
       const cached = typeof window !== 'undefined' ? localStorage.getItem(CACHE_CART_KEY) : null;
       return !cached;
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -40,40 +46,42 @@ const Cart = () => {
   const [operatingProductId, setOperatingProductId] = useState(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
-  const { setCartCount } = useAuth();
-  const { toastSuccess, toastError, toastWarning } = useToast();
-  const navigate = useNavigate();
-
+  // Stable loadCart callback that NEVER loops on cart state changes
   const loadCart = useCallback(async (isManualRetry = false) => {
-    if (cart.items?.length > 0 && !isManualRetry) {
-      setIsRefreshing(true);
-    } else {
+    if (isManualRetry) {
       setLoading(true);
+    } else {
+      setIsRefreshing(true);
     }
     setLoadError(null);
 
     try {
       const data = await apiFetchCart();
       setCart(data);
-      setCartCount(data.item_count || 0);
+      const newCount = data?.item_count || 0;
+      setCartCount(newCount);
       try {
         localStorage.setItem(CACHE_CART_KEY, JSON.stringify(data));
       } catch (e) {
         console.warn('Failed to cache cart:', e);
       }
+      if (isManualRetry) {
+        toastSuccess('Cart updated.');
+      }
     } catch (err) {
       console.error('Failed to load cart:', err);
       const errMsg = extractErrorMessage(err, 'Could not retrieve your cart. The server may be waking up.');
       setLoadError(errMsg);
-      if (!cart.items || cart.items.length === 0) {
+      if (isManualRetry) {
         toastError(errMsg);
       }
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [cart.items, setCartCount, toastError]);
+  }, [setCartCount, toastError, toastSuccess]);
 
+  // Execute fetch only once on mount
   useEffect(() => {
     loadCart();
   }, [loadCart]);
@@ -138,9 +146,22 @@ const Cart = () => {
   if (loading) {
     return (
       <div className="container">
-        <div className="loading-center">
-          <div className="spinner"></div>
-          <p>Loading your shopping cart...</p>
+        <div className="page-header">
+          <h1 className="page-title">Shopping Cart</h1>
+          <p className="page-subtitle">Review items in your cart before placing your order</p>
+        </div>
+        <div className="cart-layout">
+          <div className="cart-items-container" style={{ padding: '24px', background: '#FFFFFF', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+            <div className="skeleton-line shimmer" style={{ height: '20px', width: '40%', marginBottom: '24px' }}></div>
+            <div className="skeleton-line shimmer" style={{ height: '56px', width: '100%', marginBottom: '12px' }}></div>
+            <div className="skeleton-line shimmer" style={{ height: '56px', width: '100%' }}></div>
+          </div>
+          <div className="order-summary-card">
+            <h2 className="summary-title">Order Summary</h2>
+            <div className="skeleton-line shimmer" style={{ height: '18px', width: '70%', margin: '16px 0' }}></div>
+            <div className="skeleton-line shimmer" style={{ height: '18px', width: '85%', marginBottom: '20px' }}></div>
+            <div className="skeleton-line shimmer" style={{ height: '42px', width: '100%' }}></div>
+          </div>
         </div>
       </div>
     );
@@ -192,9 +213,17 @@ const Cart = () => {
 
   return (
     <div className="container">
-      <div className="page-header">
-        <h1 className="page-title">Shopping Cart</h1>
-        <p className="page-subtitle">Review items in your cart before placing your order</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+        <div>
+          <h1 className="page-title">Shopping Cart</h1>
+          <p className="page-subtitle">Review items in your cart before placing your order</p>
+        </div>
+        {isRefreshing && (
+          <div className="sync-badge">
+            <span className="sync-dot"></span>
+            Syncing cart...
+          </div>
+        )}
       </div>
 
       <div className="cart-layout">
