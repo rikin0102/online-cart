@@ -13,9 +13,30 @@ import CartItemRow from '../components/CartItemRow';
 import { formatPrice } from '../components/ProductCard';
 import '../styles/cart.css';
 
+const CACHE_CART_KEY = 'online_cart_cached_data';
+
 const Cart = () => {
-  const [cart, setCart] = useState({ items: [], grand_total: 0, item_count: 0 });
-  const [loading, setLoading] = useState(true);
+  // 1. Instant hydration from cache for 0ms initial render
+  const [cart, setCart] = useState(() => {
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(CACHE_CART_KEY) : null;
+      return cached ? JSON.parse(cached) : { items: [], grand_total: 0, item_count: 0 };
+    } catch {
+      return { items: [], grand_total: 0, item_count: 0 };
+    }
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem(CACHE_CART_KEY) : null;
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [operatingProductId, setOperatingProductId] = useState(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
@@ -23,19 +44,35 @@ const Cart = () => {
   const { toastSuccess, toastError, toastWarning } = useToast();
   const navigate = useNavigate();
 
-  const loadCart = useCallback(async () => {
-    try {
+  const loadCart = useCallback(async (isManualRetry = false) => {
+    if (cart.items?.length > 0 && !isManualRetry) {
+      setIsRefreshing(true);
+    } else {
       setLoading(true);
+    }
+    setLoadError(null);
+
+    try {
       const data = await apiFetchCart();
       setCart(data);
       setCartCount(data.item_count || 0);
+      try {
+        localStorage.setItem(CACHE_CART_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.warn('Failed to cache cart:', e);
+      }
     } catch (err) {
       console.error('Failed to load cart:', err);
-      toastError(extractErrorMessage(err, 'Could not retrieve your cart. Please try again.'));
+      const errMsg = extractErrorMessage(err, 'Could not retrieve your cart. The server may be waking up.');
+      setLoadError(errMsg);
+      if (!cart.items || cart.items.length === 0) {
+        toastError(errMsg);
+      }
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [setCartCount, toastError]);
+  }, [cart.items, setCartCount, toastError]);
 
   useEffect(() => {
     loadCart();
@@ -112,6 +149,25 @@ const Cart = () => {
   const isEmpty = !cart.items || cart.items.length === 0;
 
   if (isEmpty) {
+    if (loadError) {
+      return (
+        <div className="container">
+          <div className="error-fallback-card">
+            <svg className="error-fallback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <h2>Unable to Retrieve Cart</h2>
+            <p>{loadError}</p>
+            <button className="btn-primary" onClick={() => loadCart(true)}>
+              Retry Loading Cart
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="container">
         <div className="empty-state">

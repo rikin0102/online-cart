@@ -10,11 +10,22 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingLong, setIsWaitingLong] = useState(false);
 
   const { login, user } = useAuth();
   const { toastSuccess, toastError } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    let timer;
+    if (isSubmitting) {
+      timer = setTimeout(() => setIsWaitingLong(true), 3000);
+    } else {
+      setIsWaitingLong(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isSubmitting]);
 
   // If user is already logged in, redirect to dashboard
   useEffect(() => {
@@ -107,7 +118,9 @@ const Login = () => {
             style={{ marginTop: '8px' }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Logging in...' : 'Login'}
+            {isSubmitting
+              ? (isWaitingLong ? '⚡ Waking up server...' : 'Logging in...')
+              : 'Login'}
           </button>
         </form>
 

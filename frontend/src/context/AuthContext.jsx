@@ -4,12 +4,34 @@ import { getCurrentUser, loginUser, registerUser, fetchCart } from '../api';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [cartCount, setCartCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('token') : null));
+  
+  // Hydrate user profile from cache immediately so UI renders in 0ms
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
-  // Fetch current user and cart state
+  const [cartCount, setCartCount] = useState(() => {
+    try {
+      return Number(localStorage.getItem('cart_count') || 0);
+    } catch {
+      return 0;
+    }
+  });
+
+  // Loading is only true if we have a token but NO cached user profile to display
+  const [loading, setLoading] = useState(() => {
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    return Boolean(storedToken && !storedUser);
+  });
+
+  // Fetch current user and cart state in the background
   const refreshUserData = useCallback(async () => {
     const storedToken = localStorage.getItem('token');
     if (!storedToken) {
@@ -20,30 +42,36 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const [meData, cartData] = await Promise.allSettled([
+      const [meResult, cartResult] = await Promise.allSettled([
         getCurrentUser(),
         fetchCart(),
       ]);
 
-      if (meData.status === 'fulfilled') {
-        setUser(meData.value);
+      if (meResult.status === 'fulfilled') {
+        const userData = meResult.value;
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
       } else {
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        setCartCount(0);
-        setLoading(false);
-        return;
+        const errorStatus = meResult.reason?.response?.status;
+        // Only invalidate if explicitly unauthorized (401/403)
+        if (errorStatus === 401 || errorStatus === 403) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('cart_count');
+          setToken(null);
+          setUser(null);
+          setCartCount(0);
+        }
+        // If it's a network timeout or Render waking up, preserve cached user!
       }
 
-      if (cartData.status === 'fulfilled') {
-        setCartCount(cartData.value.item_count || 0);
+      if (cartResult.status === 'fulfilled') {
+        const count = cartResult.value.item_count || 0;
+        setCartCount(count);
+        localStorage.setItem('cart_count', String(count));
       }
     } catch (err) {
-      console.error('Error refreshing auth data:', err);
-      localStorage.removeItem('token');
-      setToken(null);
-      setUser(null);
+      console.warn('Background auth refresh error:', err);
     } finally {
       setLoading(false);
     }
@@ -53,6 +81,22 @@ export const AuthProvider = ({ children }) => {
     refreshUserData();
   }, [refreshUserData]);
 
+  // Listen for global 401 events dispatched by client.js
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('cart_count');
+      setToken(null);
+      setUser(null);
+      setCartCount(0);
+      setLoading(false);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
   const refreshCartCount = useCallback(async () => {
     const storedToken = localStorage.getItem('token');
     if (!storedToken) {
@@ -61,9 +105,11 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       const data = await fetchCart();
-      setCartCount(data.item_count || 0);
+      const count = data.item_count || 0;
+      setCartCount(count);
+      localStorage.setItem('cart_count', String(count));
     } catch (err) {
-      console.error('Failed to fetch cart count:', err);
+      console.warn('Failed to fetch cart count:', err);
     }
   }, []);
 
@@ -71,8 +117,10 @@ export const AuthProvider = ({ children }) => {
     const data = await loginUser({ email, password });
     const { access_token, user: loggedUser } = data;
     localStorage.setItem('token', access_token);
+    localStorage.setItem('user', JSON.stringify(loggedUser));
     setToken(access_token);
     setUser(loggedUser);
+    setLoading(false);
     await refreshCartCount();
     return loggedUser;
   };
@@ -84,6 +132,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('cart_count');
+    localStorage.removeItem('online_cart_cached_products');
     setToken(null);
     setUser(null);
     setCartCount(0);
@@ -97,6 +148,7 @@ export const AuthProvider = ({ children }) => {
         cartCount,
         setCartCount,
         refreshCartCount,
+        refreshUserData,
         login,
         register,
         logout,
@@ -118,3 +170,4 @@ export const useAuth = () => {
 };
 
 export default AuthContext;
+

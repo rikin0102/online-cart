@@ -8,4 +8,17 @@ export default defineConfig({
     port: 5173,
     host: true,
   },
+  build: {
+    target: 'esnext',
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-axios': ['axios'],
+        },
+      },
+    },
+  },
 });
+

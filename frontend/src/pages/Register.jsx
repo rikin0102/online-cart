@@ -11,10 +11,21 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingLong, setIsWaitingLong] = useState(false);
 
   const { register, login, user } = useAuth();
   const { toastSuccess, toastError, toastInfo } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let timer;
+    if (isSubmitting) {
+      timer = setTimeout(() => setIsWaitingLong(true), 3000);
+    } else {
+      setIsWaitingLong(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isSubmitting]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -176,7 +187,9 @@ const Register = () => {
             style={{ marginTop: '8px' }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Creating account...' : 'Register'}
+            {isSubmitting
+              ? (isWaitingLong ? '⚡ Waking up server...' : 'Creating account...')
+              : 'Register'}
           </button>
         </form>
 

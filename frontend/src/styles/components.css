@@ -351,3 +351,75 @@
     width: auto;
   }
 }
+
+/* --- SERVER WAKEUP FLOATING BANNER --- */
+.server-wakeup-banner {
+  background: #FEF3C7;
+  border-bottom: 1px solid #FCD34D;
+  color: #92400E;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  animation: slideDownBanner 0.25s ease-out;
+}
+
+@keyframes slideDownBanner {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.server-wakeup-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.server-wakeup-icon {
+  font-size: 16px;
+  animation: pulseWakeup 1s infinite alternate;
+}
+
+@keyframes pulseWakeup {
+  from { transform: scale(1); }
+  to { transform: scale(1.2); }
+}
+
+.server-wakeup-text {
+  flex-grow: 1;
+  line-height: 1.4;
+}
+
+.server-wakeup-bar {
+  height: 2px;
+  background-color: #FDE68A;
+  overflow: hidden;
+  position: relative;
+}
+
+.server-wakeup-progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background-color: #D97706;
+  border-radius: 99px;
+  animation: bannerProgressSlide 1.5s ease-in-out infinite;
+}
+
+@keyframes bannerProgressSlide {
+  0% { left: -35%; }
+  50% { left: 45%; }
+  100% { left: 100%; }
+}
+
